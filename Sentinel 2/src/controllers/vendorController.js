@@ -1,6 +1,8 @@
 // Simulating a Squad API interaction for Virtual Accounts
 const crypto = require('crypto');
 const squadService = require('../services/squadService');
+const Vendor = require('../models/Vendor');
+
 console.log('vendor controller working')
 exports.verifyVendor = async (req, res) => {
   try {
@@ -13,22 +15,38 @@ exports.verifyVendor = async (req, res) => {
 
     const vendorId = `VND-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
-    console.log("calling squad api to generate virtual account");
-    const virtualAccountData = await squadService.createVirtualAccount({
-      first_name: firstName,
-      last_name: lastName,
-      mobile_num: phone,
-      email: email,
-      bvn: bvn,
-      business_name: businessName,
-      beneficiary_account: "0123456789"
-    });
+    // console.log("calling squad api to generate virtual account");
+    // const virtualAccountData = await squadService.createVirtualAccount({
+    //   first_name: firstName,
+    //   last_name: lastName,
+    //   mobile_num: phone,
+    //   email: email,
+    //   bvn: bvn,
+    //   business_name: businessName,
+    //   beneficiary_account: "0123456789"
+    // });
 
     const virtualAccount = {
-      account_name: virtualAccountData.account_name || `${businessName} (Sentinel Escrow)`,
-      account_number: virtualAccountData.virtual_account_number,
-      bank_name: virtualAccountData.bank_name || 'Squad Virtual Bank',
+      account_name: `${businessName} (Sentinel Escrow)`,
+      account_number: '0123456789',
+      bank_name: 'GTBank (Demo)',
     };
+
+    // Save vendor details to MongoDB
+    const vendor = new Vendor({
+      vendorId,
+      firstName,
+      lastName,
+      email,
+      phone,
+      bvn,
+      businessName,
+      virtualAccount,
+      status: 'VERIFIED'
+    });
+
+    await vendor.save();
+    console.log(`Vendor ${vendorId} saved to MongoDB`);
 
     res.status(200).json({
       success: true,

@@ -1,24 +1,28 @@
 const crypto = require('crypto');
+const Vendor = require('../models/Vendor');
 
 exports.getVirtualAccount = async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Simulate fetching the virtual account linked to this ID from DB
-    // Since this is a prototype, we will dynamically generate a mock virtual account for the ID
-    const mockAccountNumber = Math.floor(1000000000 + Math.random() * 9000000000).toString();
-    
-    const virtualAccount = {
-      account_name: `Escrow for ${id}`,
-      account_number: mockAccountNumber,
-      bank_name: 'Wema Bank (Squad API)',
-    };
+    // Look up vendor by vendorId in MongoDB
+    const vendor = await Vendor.findOne({ vendorId: id });
+
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: `No vendor found with ID: ${id}. Please ensure the vendor has been verified through the Vendor Trust Engine.`
+      });
+    }
 
     res.status(200).json({
       success: true,
       data: {
-        vendorId: id,
-        virtualAccount
+        vendorId: vendor.vendorId,
+        businessName: vendor.businessName,
+        name: `${vendor.firstName} ${vendor.lastName}`,
+        virtualAccount: vendor.virtualAccount,
+        status: vendor.status
       }
     });
   } catch (error) {

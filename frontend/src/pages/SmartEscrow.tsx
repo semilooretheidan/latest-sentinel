@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Loader2, ArrowRight, ShieldCheck, DollarSign, Lock, Mail } from 'lucide-react';
+import { Search, Loader2, ArrowRight, ShieldCheck, DollarSign, Lock, Mail, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 
 export default function SmartEscrow() {
@@ -9,6 +9,7 @@ export default function SmartEscrow() {
   const [status, setStatus] = useState<'idle' | 'searching' | 'found' | 'funding' | 'success' | 'error'>('idle');
   const [virtualAccount, setVirtualAccount] = useState<any>(null);
   const [transaction, setTransaction] = useState<any>(null);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Note: Adjust this port to match wherever your Node.js server is running (3000 or 5000)
   const BACKEND_URL = 'http://localhost:5000';
@@ -18,15 +19,17 @@ export default function SmartEscrow() {
     if (!vendorId) return;
 
     setStatus('searching');
+    setErrorMessage('');
 
     try {
-      // Assuming this route exists on your backend to fetch the vendor's virtual account
       const response = await axios.get(`${BACKEND_URL}/api/escrow/account/${vendorId}`);
 
       setVirtualAccount(response.data.data.virtualAccount);
       setStatus('found');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error finding vendor account:', error);
+      const msg = error.response?.data?.message || 'An error occurred while searching for the vendor.';
+      setErrorMessage(msg);
       setStatus('error');
     }
   };
@@ -117,6 +120,13 @@ export default function SmartEscrow() {
                 {status === 'searching' ? <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> : 'Retrieve Details'}
               </button>
             </form>
+
+            {status === 'error' && errorMessage && (
+              <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', padding: '1rem', borderRadius: '8px', marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <AlertCircle color="#dc2626" size={20} style={{ flexShrink: 0 }} />
+                <p style={{ color: '#991b1b', fontWeight: 500, fontSize: '0.875rem', margin: 0 }}>{errorMessage}</p>
+              </div>
+            )}
           </div>
 
           {/* Step 2: Fund Escrow */}
