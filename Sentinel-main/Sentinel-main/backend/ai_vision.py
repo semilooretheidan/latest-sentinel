@@ -7,10 +7,11 @@ def compare_images(ref_path, upload_path):
     if not os.path.exists(ref_path):
         import requests
         print(f"Reference image {ref_path} missing. Downloading a default...")
-        url = "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500"
-        r = requests.get(url)
-        with open(ref_path, 'wb') as f:
-            f.write(r.content)
+        url = "apple1.png"
+        # url = "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500"
+        # r = requests.get(url)
+        # with open(ref_path, 'wb') as f:
+        #     f.write(r.content)
 
     original = cv2.imread(ref_path)
     test = cv2.imread(upload_path)

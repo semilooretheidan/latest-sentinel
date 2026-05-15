@@ -14,19 +14,22 @@ const squadHeaders = {
  * @param {number} amount - Amount in Naira
  * @param {string} email - Buyer's email
  * @param {string} shipmentId - Reference ID
+ * @param {string} callbackUrl - URL to redirect to after payment
  */
-exports.initiatePayment = async (amount, email, shipmentId) => {
+exports.initiatePayment = async (amount, email, shipmentId, callbackUrl) => {
     try {
+        const transactionRef = `SENTINEL-${shipmentId}-${Date.now()}`;
         const payload = {
             amount: amount * 100, // Convert to kobo
             email: email,
             currency: "NGN",
             initiate_type: "inline",
-            transaction_ref: `SENTINEL-${shipmentId}-${Date.now()}`
+            transaction_ref: transactionRef,
+            callback_url: callbackUrl || "http://localhost:5173/smart-escrow"
         };
 
         const response = await axios.post(`${SQUAD_BASE_URL}/transaction/initiate`, payload, { headers: squadHeaders });
-        return response.data.data;
+        return { ...response.data.data, transaction_ref: transactionRef };
     } catch (error) {
         console.error('Squad Initiate Error:', error.response ? error.response.data : error.message);
         throw new Error(error.response?.data?.message || 'Failed to initiate payment');

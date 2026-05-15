@@ -1,18 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, Loader2, ArrowRight, ShieldCheck, DollarSign, Lock, Mail, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 
 export default function SmartEscrow() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [vendorId, setVendorId] = useState('');
   const [amount, setAmount] = useState('');
-  const [email, setEmail] = useState(''); // ADDED: Squad requires an email
+  const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'searching' | 'found' | 'funding' | 'success' | 'error'>('idle');
   const [virtualAccount, setVirtualAccount] = useState<any>(null);
   const [transaction, setTransaction] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Note: Adjust this port to match wherever your Node.js server is running (3000 or 5000)
   const BACKEND_URL = 'http://localhost:5000';
+
+  // Detect return from Squad checkout
+  useEffect(() => {
+    const txRef = searchParams.get('transaction_ref') || searchParams.get('reference');
+    if (txRef) {
+      setTransaction({ transaction_ref: txRef });
+      setStatus('success');
+      // Clean the URL so it doesn't show query params
+      setSearchParams({});
+    }
+  }, []);
 
   const searchVendor = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,10 +54,10 @@ export default function SmartEscrow() {
 
     try {
       // 1. Send the data to your Node.js Backend
-      const response = await axios.post(`${BACKEND_URL}/api/payments/initiate`, {
+      const response = await axios.post(`${BACKEND_URL}/api/escrow/initiate`, {
         amount: parseFloat(amount),
         email: email,
-        shipmentId: vendorId // Using vendorId as the reference for now
+        vendorId: vendorId
       });
 
       // 2. Check if Squad successfully generated a payment link
@@ -72,14 +84,18 @@ export default function SmartEscrow() {
         <p style={{ color: 'var(--text-secondary)' }}>Securely fund a transaction. Funds are released automatically after 24hrs or upon delivery verification.</p>
       </div>
 
-      {status === 'success' && transaction ? (
+      {status === 'success' ? (
         <div className="glass-panel animate-fade-in" style={{ padding: '3rem', textAlign: 'center', background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
           <ShieldCheck size={64} color="var(--accent-primary)" style={{ margin: '0 auto 1.5rem auto' }} />
-          <h2 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Escrow Successfully Funded</h2>
-          {/* FIXED: Added Optional Chaining to safely access the amount number */}
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-            ₦{transaction?.amount || '0.00'} has been secured in the Squad API Virtual Account.
+          <h2 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Escrow Payment Complete!</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+            Your payment has been successfully processed and secured.
           </p>
+          {transaction?.transaction_ref && (
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '2rem' }}>
+              Ref: <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{transaction.transaction_ref}</span>
+            </p>
+          )}
           <button
             className="btn-primary"
             onClick={() => {
@@ -88,7 +104,7 @@ export default function SmartEscrow() {
               setAmount('');
               setEmail('');
               setVirtualAccount(null);
-              setTransaction(null); // Added this to clear the object safely
+              setTransaction(null);
             }}
           >
             Start New Escrow
