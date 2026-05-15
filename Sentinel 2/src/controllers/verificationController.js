@@ -75,7 +75,7 @@ exports.verifyProductImage = async (req, res) => {
         shipment.aiScore = score;
 
         // 3. Evaluate the score and act
-        if (score > 85) {
+        if (score >= 70) {
             shipment.status = 'VERIFIED';
             
             // 4. Release Payout via Squad Service

@@ -17,11 +17,11 @@ router.get('/:id', requireAuth, getShipmentById);
 // 4. Retry Payout (Buyer only, if verified but failed)
 router.post('/:id/retry-payout', requireAuth, requireRole('buyer'), retryPayout);
 
-// 5. Verify product image (Supplier only)
+// 5. Verify product image (Buyer only, as consumer snaps photo)
 router.post(
     '/:id/verify', 
     requireAuth, 
-    requireRole('supplier'), 
+    requireRole('buyer'), 
     upload.single('productImage'), 
     verifyProductImage
 );

@@ -1,7 +1,8 @@
 const axios = require('axios');
 
-const SQUAD_BASE_URL = 'https://sandbox-api.squadco.com';
-const SQUAD_SECRET_KEY = process.env.SQUAD_SECRET_KEY;
+const SQUAD_BASE_URL = 'https://sandbox-api-d.squadco.com';
+// const SQUAD_SECRET_KEY = process.env.SQUAD_SECRET_KEY;
+const SQUAD_SECRET_KEY = "sandbox_sk_9d8e846d8cc8be31e8ba484e5d4d30a4ddbf8e013d1b";
 
 const squadHeaders = {
     'Authorization': `Bearer ${SQUAD_SECRET_KEY}`,
@@ -67,5 +68,27 @@ exports.releasePayout = async (details) => {
     } catch (error) {
         console.error('Squad Payout Error:', error.response ? error.response.data : error.message);
         throw new Error(error.response?.data?.message || 'Failed to release payout');
+    }
+};
+exports.createVirtualAccount = async (details) => {
+    try {
+        const payload = {
+            customer_identifier: `SENTINEL-${Date.now()}`,
+            first_name: details.first_name,
+            last_name: details.last_name,
+            middle_name: details.middle_name || details.first_name,
+            mobile_num: details.mobile_num,
+            email: details.email,
+            bvn: details.bvn,
+            dob: details.dob || '01/01/1990',
+            address: details.address || '1 Test Street, Lagos',
+            gender: details.gender || '1',
+            beneficiary_account: details.beneficiary_account || '0156516421',
+        };
+        const response = await axios.post(`${SQUAD_BASE_URL}/virtual-account`, payload, { headers: squadHeaders });
+        return response.data.data;
+    } catch (error) {
+        console.error('Squad Virtual Account Error:', error.response ? error.response.data : error.message);
+        throw new Error(error.response?.data?.message || 'Failed to create virtual account');
     }
 };
