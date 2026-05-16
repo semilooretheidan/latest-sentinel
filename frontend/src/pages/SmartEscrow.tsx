@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, Loader2, ArrowRight, ShieldCheck, DollarSign, Lock, Mail, AlertCircle } from 'lucide-react';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 export default function SmartEscrow() {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [vendorId, setVendorId] = useState('');
   const [amount, setAmount] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(user?.email || '');
   const [status, setStatus] = useState<'idle' | 'searching' | 'found' | 'funding' | 'success' | 'error'>('idle');
   const [virtualAccount, setVirtualAccount] = useState<any>(null);
   const [transaction, setTransaction] = useState<any>(null);
@@ -60,14 +62,15 @@ export default function SmartEscrow() {
         vendorId: vendorId
       });
 
-      // 2. Check if Squad successfully generated a payment link
+      // 2. If Squad returned a checkout URL, redirect. Otherwise show success directly.
       if (response.data.success && response.data.data.checkout_url) {
-
-        // 3. Redirect the user to the Squad Checkout Page!
         window.location.href = response.data.data.checkout_url;
-
+      } else if (response.data.success) {
+        // Direct mode: Squad was unavailable, escrow saved locally
+        setTransaction({ transaction_ref: response.data.data.transaction_ref });
+        setStatus('success');
       } else {
-        console.error("Squad did not return a checkout URL");
+        console.error("Escrow initiation failed");
         setStatus('error');
       }
     } catch (error) {

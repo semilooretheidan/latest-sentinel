@@ -1,32 +1,76 @@
 const User = require('../models/User');
+const Vendor = require('../models/Vendor');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
-// POST: Register a new B2B account
+// POST: Register a new account (Buyer or Vendor)
 exports.registerUser = async (req, res) => {
     try {
-        const { businessName, email, password, role } = req.body;
+        const { businessName, email, password, role, phone, bvn } = req.body;
         
-        // 1. Check if the business already exists
+        // 1. Check if the account already exists
         const existingUser = await User.findOne({ email });
         if (existingUser) {
             return res.status(400).json({ message: 'An account with this email already exists' });
         }
 
-        // 2. Hash the password for security
+        // 2. Hash the password
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // 3. Save the new user to MongoDB
-        const newUser = new User({ 
+        // 3. Build user object
+        const userData = { 
             businessName, 
             email, 
             password: hashedPassword, 
             role 
-        });
+        };
+
+        // 4. If vendor, generate vendorId and virtual account
+        if (role === 'vendor') {
+            if (!phone || !bvn) {
+                return res.status(400).json({ message: 'Phone and BVN are required for vendor registration' });
+            }
+
+            const vendorId = `VND-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+            userData.phone = phone;
+            userData.bvn = bvn;
+            userData.vendorId = vendorId;
+            userData.virtualAccount = {
+                account_name: `${businessName} (Sentinel Escrow)`,
+                account_number: `0${Math.floor(100000000 + Math.random() * 900000000)}`,
+                bank_name: 'GTBank (Demo)'
+            };
+
+            // Also save to the Vendor collection for escrow search
+            const vendorRecord = new Vendor({
+                vendorId,
+                firstName: businessName.split(' ')[0] || businessName,
+                lastName: businessName.split(' ').slice(1).join(' ') || '-',
+                email,
+                phone,
+                bvn,
+                businessName,
+                virtualAccount: userData.virtualAccount,
+                status: 'VERIFIED'
+            });
+            await vendorRecord.save();
+            console.log(`Vendor ${vendorId} created and saved to Vendor collection`);
+        }
+
+        // 5. Save user
+        const newUser = new User(userData);
         await newUser.save();
 
-        res.status(201).json({ message: 'Business registered successfully' });
+        // 6. Return response with vendor details if applicable
+        const response = { message: 'Account registered successfully' };
+        if (role === 'vendor') {
+            response.vendorId = userData.vendorId;
+            response.virtualAccount = userData.virtualAccount;
+        }
+
+        res.status(201).json(response);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error during registration', error: error.message });
@@ -50,22 +94,28 @@ exports.loginUser = async (req, res) => {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
-        // 3. Generate the JWT Token (Includes user ID and Role)
+        // 3. Generate the JWT Token
         const token = jwt.sign(
             { id: user._id, role: user.role }, 
             process.env.JWT_SECRET, 
             { expiresIn: '1d' }
         );
 
-        // 4. Send token and basic profile data back to React
-        res.status(200).json({ 
-            token, 
-            user: { 
-                id: user._id, 
-                businessName: user.businessName, 
-                role: user.role 
-            } 
-        });
+        // 4. Send token and profile data back to React
+        const userData = { 
+            id: user._id, 
+            businessName: user.businessName, 
+            email: user.email,
+            role: user.role 
+        };
+
+        // Include vendor-specific fields if vendor
+        if (user.role === 'vendor') {
+            userData.vendorId = user.vendorId;
+            userData.virtualAccount = user.virtualAccount;
+        }
+
+        res.status(200).json({ token, user: userData });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error during login', error: error.message });

@@ -7,6 +7,10 @@ const escrowSchema = new mongoose.Schema({
     unique: true,
     index: true
   },
+  buyerEmail: {
+    type: String,
+    default: ''
+  },
   vendorId: {
     type: String,
     required: true

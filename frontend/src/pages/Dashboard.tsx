@@ -2,17 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Package, Clock, ShieldCheck, ArrowRight, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 const BACKEND_URL = 'http://localhost:5000';
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const [escrows, setEscrows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchEscrows = async () => {
       try {
-        const response = await axios.get(`${BACKEND_URL}/api/escrow`);
+        const response = await axios.get(`${BACKEND_URL}/api/escrow?email=${user?.email || ''}`);
         if (response.data.success) {
           setEscrows(response.data.data);
         }
@@ -23,7 +25,7 @@ export default function Dashboard() {
       }
     };
     fetchEscrows();
-  }, []);
+  }, [user]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {

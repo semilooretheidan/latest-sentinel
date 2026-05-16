@@ -3,10 +3,34 @@ import axios from 'axios';
 
 const BACKEND_URL = 'http://localhost:5000';
 
+interface VirtualAccount {
+  account_name: string;
+  account_number: string;
+  bank_name: string;
+}
+
 interface User {
   id: string;
   businessName: string;
-  role: 'buyer' | 'supplier';
+  email: string;
+  role: 'buyer' | 'vendor';
+  vendorId?: string;
+  virtualAccount?: VirtualAccount;
+}
+
+interface RegisterData {
+  businessName: string;
+  email: string;
+  password: string;
+  role: string;
+  phone?: string;
+  bvn?: string;
+}
+
+interface RegisterResponse {
+  message: string;
+  vendorId?: string;
+  virtualAccount?: VirtualAccount;
 }
 
 interface AuthContextType {
@@ -15,7 +39,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (businessName: string, email: string, password: string, role: string) => Promise<void>;
+  register: (data: RegisterData) => Promise<RegisterResponse>;
   logout: () => void;
 }
 
@@ -26,19 +50,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(localStorage.getItem('sentinel_token'));
   const [loading, setLoading] = useState(true);
 
-  // On mount, check if token exists and load user profile
   useEffect(() => {
-    const loadUser = async () => {
-      const savedToken = localStorage.getItem('sentinel_token');
-      const savedUser = localStorage.getItem('sentinel_user');
+    const savedToken = localStorage.getItem('sentinel_token');
+    const savedUser = localStorage.getItem('sentinel_user');
 
-      if (savedToken && savedUser) {
-        setToken(savedToken);
-        setUser(JSON.parse(savedUser));
-      }
-      setLoading(false);
-    };
-    loadUser();
+    if (savedToken && savedUser) {
+      setToken(savedToken);
+      setUser(JSON.parse(savedUser));
+    }
+    setLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -51,8 +71,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData);
   };
 
-  const register = async (businessName: string, email: string, password: string, role: string) => {
-    await axios.post(`${BACKEND_URL}/api/auth/register`, { businessName, email, password, role });
+  const register = async (data: RegisterData): Promise<RegisterResponse> => {
+    const response = await axios.post(`${BACKEND_URL}/api/auth/register`, data);
+    return response.data;
   };
 
   const logout = () => {
